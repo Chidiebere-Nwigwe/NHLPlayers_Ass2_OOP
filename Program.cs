@@ -236,4 +236,229 @@ namespace NHLPlayers_Ass2_OOP
             }
 
         }
- 
+        static List<Players> PerformFilter(List<Players> players, string filter) //Filter function
+        {
+            //double value;
+            Method method = new Method();
+            //var filterComponents = filter.Split(new char[] { ' ' }, 3);  //splitting the filter into three components
+
+
+            //////splittin ginto the three diff parts
+            //string statColumn = filterComponents[0].ToLower(); // column
+            //string filterOperator = filterComponents[1].ToLower(); // conditional operator
+            //filterOperator = Regex.Replace(filterOperator, @"\s+", " ").Trim();
+            //string filterValue = filterComponents[2].ToLower(); // value
+            //filterValue = Regex.Replace(filterValue, @"\s+", " ").Trim();
+
+            //if (isNumericColumn && filterComponents.Length != 3)
+            //{
+            //    Console.WriteLine();
+            //    Console.WriteLine("Invalid Filter Format");
+            //    return new List<Players>();
+            //}
+
+
+
+            ///REFFERENCING OUR CODE///////
+            //We used AI to get this code that helps us for easier separation of the filter string ,
+            //before we used the code above but the updated one seems to help for more effective solution
+
+            // Regular expression to capture the column, operator (with spaces), and value
+            var regex = new Regex(@"^([\w+/%-]+)\s+(ends\swith|starts\swith|contains|==|!=|>|<|>=|<=|=)\s+(.+)$", RegexOptions.IgnoreCase);
+
+
+            // Check if the filter matches the pattern
+            Match match = regex.Match(filter);
+            if (!match.Success)
+            {
+                Console.WriteLine();
+                Console.WriteLine("Invalid filter format.");
+                Console.WriteLine("Please ensure components are correct and well separated with spaces");
+                return new List<Players>();  // Return empty list if filter format is incorrect
+            }
+
+            // Extract the components from the regex match
+            string statColumn = match.Groups[1].Value.ToLower();  // Column name
+            string filterOperator = match.Groups[2].Value.ToLower();  // Operator
+            string filterValue = match.Groups[3].Value.ToLower();  // Filter value
+
+
+            filterOperator = Regex.Replace(filterOperator, @"\s+", " ").Trim();  // Clean up the operator and value (remove extra spaces if needed)
+            filterValue = Regex.Replace(filterValue, @"\s+", " ").Trim();  // Clean up the value and value (remove extra spaces if needed)
+
+            bool containsColon = filterValue.Contains(":");
+
+
+
+            if ((statColumn == "toi/gp") && containsColon) // if its the column  of time type
+            {
+                filterValue = method.ConverttoTime(filterValue).ToString();
+            }
+            if ((statColumn == "toi/gp") && !containsColon) // if its the column  of time type
+            {
+                Console.WriteLine();
+                Console.WriteLine("The TOI/GP Column is to be compared with values in mm:ss (e.g 12:10)");
+                return new List<Players>();
+
+            }
+
+            double value = 0;
+            bool isNumericColumn = statColumn != "name" && statColumn != "pos" && statColumn != "team" && !containsColon;
+
+
+            if (isNumericColumn && !double.TryParse(filterValue, out value)) //for columns that are not number values, we dont need to parse it
+            {
+                Console.WriteLine();
+                Console.WriteLine("Invalid value for comparison.");
+                Console.WriteLine("Make sure there's no space between operators if using symbols and use correct values.");
+                return new List<Players>();
+            }
+
+            // manipulating input string for columns that were named differently 
+            if (statColumn == "+/-") { statColumn = "plus_minus"; }
+            if (statColumn == "p/gp") { statColumn = "p_gp"; }
+            if (statColumn == "s%") { statColumn = "spercent"; }
+            if (statColumn == "toi/gp") { statColumn = "toi_gp"; }
+            if (statColumn == "shifts/gp") { statColumn = "shifts_gp"; }
+            if (statColumn == "fow%") { statColumn = "fowpercent"; }
+            if (filterOperator == "starts with") { filterOperator = "startsWith"; }
+            if (filterOperator == "contains") { filterOperator = "contains"; }
+            if (filterOperator == "ends with") { filterOperator = "endsWith"; }
+
+            var column = typeof(Players).GetFields(BindingFlags.Public | BindingFlags.Instance)
+                                            .FirstOrDefault(f => f.Name.ToLower() == statColumn); // COnfirming column is available (also case insensitive too)
+            if (column == null)
+            {
+                Console.WriteLine();
+                Console.WriteLine("Invalid Column Name");
+                return new List<Players>();
+            }
+            IEnumerable<Players> filteredQuery = players; // Applying the filter based on operator
+            switch (filterOperator)
+            {
+                case "==":
+                case "=":
+                    if (statColumn == "toi_gp")
+                    {
+                        filteredQuery = players.Where(q => method.ConverttoTime(q.TOI_GP) == value);
+
+                    }
+                    else if (statColumn == "name")
+                    {
+                        filteredQuery = players.Where(q => q.Name.ToLower() == filterValue);
+                    }
+                    else if (statColumn == "team")
+                    {
+                        filteredQuery = players.Where(q => q.Team.ToLower() == filterValue);
+                    }
+                    else if (statColumn == "pos")
+                    {
+                        filteredQuery = players.Where(q => q.Pos.ToLower() == filterValue);
+                    }
+                    else
+                    {
+                        filteredQuery = players.Where(q => (double)column.GetValue(q) == value);
+                    }
+                    break;
+                case "startsWith":
+                    if (statColumn == "name")
+                    {
+                        filteredQuery = players.Where(q => q.Name.StartsWith(filterValue, StringComparison.OrdinalIgnoreCase));
+                    }
+                    else if (statColumn == "team")
+                    {
+                        filteredQuery = players.Where(q => q.Team.StartsWith(filterValue, StringComparison.OrdinalIgnoreCase));
+                    }
+                    else if (statColumn == "pos")
+                    {
+                        filteredQuery = players.Where(q => q.Pos.StartsWith(filterValue, StringComparison.OrdinalIgnoreCase));
+                    }
+                    break;
+                case "endsWith":
+                    if (statColumn == "name")
+                    {
+                        filteredQuery = players.Where(q => q.Name.EndsWith(filterValue, StringComparison.OrdinalIgnoreCase));
+                    }
+                    else if (statColumn == "team")
+                    {
+                        filteredQuery = players.Where(q => q.Team.EndsWith(filterValue, StringComparison.OrdinalIgnoreCase));
+                    }
+                    else if (statColumn == "pos")
+                    {
+                        filteredQuery = players.Where(q => q.Pos.EndsWith(filterValue, StringComparison.OrdinalIgnoreCase));
+                    }
+                    break;
+                case "contains":
+                    if (statColumn == "name")
+                    {
+                        filteredQuery = players.Where(q => q.Name.IndexOf(filterValue, StringComparison.OrdinalIgnoreCase) >= 0);
+                    }
+                    else if (statColumn == "team")
+                    {
+                        filteredQuery = players.Where(q => q.Team.IndexOf(filterValue, StringComparison.OrdinalIgnoreCase) >= 0);
+                    }
+                    else if (statColumn == "pos")
+                    {
+                        filteredQuery = players.Where(q => q.Pos.IndexOf(filterValue, StringComparison.OrdinalIgnoreCase) >= 0);
+                    }
+                    break;
+                case ">":
+                    if (statColumn == "toi_gp")
+                    {
+                        filteredQuery = players.Where(q => method.ConverttoTime(q.TOI_GP) > value);
+                    }
+                    else
+                    {
+                        filteredQuery = players.Where(q => (double)column.GetValue(q) > value);
+                    }
+                    break;
+                case "<":
+                    if (statColumn == "toi_gp")
+                    {
+                        filteredQuery = players.Where(q => method.ConverttoTime(q.TOI_GP) < value);
+                    }
+                    else
+                    {
+                        filteredQuery = players.Where(q => (double)column.GetValue(q) < value);
+                    }
+                    break;
+                case ">=":
+                    if (statColumn == "toi_gp")
+                    {
+                        filteredQuery = players.Where(q => method.ConverttoTime(q.TOI_GP) >= value);
+                    }
+                    else
+                    {
+                        filteredQuery = players.Where(q => (double)column.GetValue(q) >= value);
+                    }
+                    break;
+                case "<=":
+                    if (statColumn == "toi_gp")
+                    {
+                        filteredQuery = players.Where(q => method.ConverttoTime(q.TOI_GP) <= value);
+                    }
+                    else
+                    {
+                        filteredQuery = players.Where(q => (double)column.GetValue(q) <= value);
+                    }
+                    break;
+                case "!=":
+                    if (statColumn == "toi_gp")
+                    {
+                        filteredQuery = players.Where(q => method.ConverttoTime(q.TOI_GP) != value);
+                    }
+                    else
+                    {
+                        filteredQuery = players.Where(q => (double)column.GetValue(q) != value);
+                    }
+                    break;
+                default:
+                    Console.WriteLine();
+                    Console.WriteLine("Invalid filter operator.");
+                    return new List<Players>();
+                    //return players; // Return original list if the operator is invalid
+            }
+
+            return filteredQuery.ToList(); // Return the filtered list
+        }
+
