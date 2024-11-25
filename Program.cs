@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
@@ -459,6 +460,129 @@ namespace NHLPlayers_Ass2_OOP
                     //return players; // Return original list if the operator is invalid
             }
 
-            return filteredQuery.ToList(); // Return the filtered list
+            return filteredQuery.ToList(); // Return the filtered list
+        }
+        static List<Players> PerformSort(List<Players> players, List<string> sortColumns, List<string> sortOrders)
+        {
+            var query = players.AsQueryable();  // Using Linq to make it query
+            for (int i = 0; i < sortColumns.Count; i++)
+            {
+                var sortColumn = sortColumns[i].ToLower().Trim();
+                var sortOrder = sortOrders[i].ToLower().Trim();
+
+                // Ensure the column is valid
+                var column = typeof(Players).GetFields(BindingFlags.Public | BindingFlags.Instance)
+                                              .FirstOrDefault(f => f.Name.ToLower() == sortColumn);
+                if (column == null)
+                {
+                    Console.WriteLine($"Invalid Column Name: {sortColumn}");
+                    continue;
+                }
+                // Apply sorting based on the current column
+                if (sortOrder == "asc")
+                {
+                    query = query.OrderBy(player => column.GetValue(player));
+                }
+                else if (sortOrder == "desc")
+                {
+                    query = query.OrderByDescending(player => column.GetValue(player));
+                }
+            }
+            return query.ToList();
         }
+        static readonly Dictionary<string, string> columnNameMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) //dictionary to help with columns stored with different name
+        {
+            { "+/-", "Plus_Minus" },
+            { "p/gp", "P_GP" },
+            { "s%", "Spercent" },
+            { "toi/gp", "TOI_GP" },
+            { "shifts/gp", "Shifts_GP" },
+            { "fow%", "FOWpercent" }
+        };
+
+        //REFERENCING//
+        //we used to AI help us integrate this method so that we can be able to map user input for column names 
+        static string GetInternalColumnName(string userInput)  // Helper method to map user input to internal column name
+        {
+            // Check if the input is mapped to an internal column name, else return the original input
+            if (columnNameMapping.ContainsKey(userInput))
+            {
+                return columnNameMapping[userInput];
+            }
+            return userInput; // return as is if no mapping exists
+        }
+
+        static bool IsValidColumn(string columnName) //bool to double check valid column name
+        {
+            var validColumns = new List<string>
+            {
+                "name", "team", "pos", "gp", "g", "a", "p", "plus_minus", "pim", "p_gp",
+                "ppg", "ppp", "shg", "shp", "gwg", "otg", "s", "spercent", "toi_gp", "shifts_gp", "fowpercent"
+            };
+
+            return validColumns.Contains(columnName.ToLower());
+        }
+
+
+        static List<Players> PerformSort(List<Players> players, List<string> sortColumns, List<string> sortOrders)
+        {
+            var query = players.AsQueryable();  // Using Linq to make it query
+            for (int i = 0; i < sortColumns.Count; i++)
+            {
+                var sortColumn = sortColumns[i].ToLower().Trim();
+                var sortOrder = sortOrders[i].ToLower().Trim();
+
+                // Ensure the column is valid
+                var column = typeof(Players).GetFields(BindingFlags.Public | BindingFlags.Instance)
+                                              .FirstOrDefault(f => f.Name.ToLower() == sortColumn);
+                if (column == null)
+                {
+                    Console.WriteLine($"Invalid Column Name: {sortColumn}");
+                    continue;
+                }
+                // Apply sorting based on the current column
+                if (sortOrder == "asc")
+                {
+                    query = query.OrderBy(player => column.GetValue(player));
+                }
+                else if (sortOrder == "desc")
+                {
+                    query = query.OrderByDescending(player => column.GetValue(player));
+                }
+            }
+            return query.ToList();
+        }
+        static readonly Dictionary<string, string> columnNameMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) //dictionary to help with columns stored with different name
+        {
+            { "+/-", "Plus_Minus" },
+            { "p/gp", "P_GP" },
+            { "s%", "Spercent" },
+            { "toi/gp", "TOI_GP" },
+            { "shifts/gp", "Shifts_GP" },
+            { "fow%", "FOWpercent" }
+        };
+
+        //REFERENCING//
+        //we used to AI help us integrate this method so that we can be able to map user input for column names 
+        static string GetInternalColumnName(string userInput)  // Helper method to map user input to internal column name
+        {
+            // Check if the input is mapped to an internal column name, else return the original input
+            if (columnNameMapping.ContainsKey(userInput))
+            {
+                return columnNameMapping[userInput];
+            }
+            return userInput; // return as is if no mapping exists
+        }
+
+        static bool IsValidColumn(string columnName) //bool to double check valid column name
+        {
+            var validColumns = new List<string>
+            {
+                "name", "team", "pos", "gp", "g", "a", "p", "plus_minus", "pim", "p_gp",
+                "ppg", "ppp", "shg", "shp", "gwg", "otg", "s", "spercent", "toi_gp", "shifts_gp", "fowpercent"
+            };
+
+            return validColumns.Contains(columnName.ToLower());
+        }
+
 
