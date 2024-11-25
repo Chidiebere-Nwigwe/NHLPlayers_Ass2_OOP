@@ -522,67 +522,246 @@ namespace NHLPlayers_Ass2_OOP
 
             return validColumns.Contains(columnName.ToLower());
         }
-
-
-        static List<Players> PerformSort(List<Players> players, List<string> sortColumns, List<string> sortOrders)
+        static void Main(string[] args)
         {
-            var query = players.AsQueryable();  // Using Linq to make it query
-            for (int i = 0; i < sortColumns.Count; i++)
-            {
-                var sortColumn = sortColumns[i].ToLower().Trim();
-                var sortOrder = sortOrders[i].ToLower().Trim();
+            Console.WriteLine("Your Table with player stats(Name, Team, Pos, GP, G, A, P, +/-, PIM, P/GP, PPG, PPP, SHG, SHP, GWG, OTG, S, S%, TOI/GP, Shifts/GP, FOW%)...\n");
 
-                // Ensure the column is valid
-                var column = typeof(Players).GetFields(BindingFlags.Public | BindingFlags.Instance)
-                                              .FirstOrDefault(f => f.Name.ToLower() == sortColumn);
-                if (column == null)
+            BuildDBFromFile(); //building my data from csv file
+
+            List<Players> filteredPlayersList = new List<Players>(Players); // This holds the filtered players list
+            Console.WriteLine();
+            while (true)
+            {
+                Console.WriteLine();
+                Console.WriteLine("Choose an Option (1, 2, 3 or 4)");
+                Console.WriteLine("1. Filter" + "\n" + "2. Sort" + "\n" + "3. Display Table of Player Stats" + "\n" + "4. Exit");
+                string option = Console.ReadLine().Trim();
+                //option = Regex.Replace(option, @"\s+", " ").Trim();
+                while (string.IsNullOrEmpty(option) || (option != "1" && option != "2" && option != "3" && option != "4"))
                 {
-                    Console.WriteLine($"Invalid Column Name: {sortColumn}");
-                    continue;
+                    Console.WriteLine("Invalid input. Please choose a valid option (1, 2, 3 or 4):");
+                    option = Console.ReadLine().Trim();
                 }
-                // Apply sorting based on the current column
-                if (sortOrder == "asc")
+                if (option == "1") //if user wants to filter
                 {
-                    query = query.OrderBy(player => column.GetValue(player));
+                    bool isValidFilter = false; // field to check if filter is valid
+
+                    while (!isValidFilter)
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine("Available columns for filtering with numbers : GP, G, A, P, +/-, PIM, P/GP, PPG, PPP, SHG, SHP, GWG, OTG, S, S%, TOI/GP, Shifts/GP, FOW%");
+                        Console.WriteLine("(e.g., 'G >= 50')");
+                        Console.WriteLine();
+                        Console.WriteLine("Available columns for filtering with words / letters : Name, Team, Pos");
+                        Console.WriteLine("(e.g., 'Name == Mark Alt' or 'Name Starts With Mark' or 'Name Ends With Alt' or 'Name Contains Mark')");
+                        Console.WriteLine();
+                        Console.WriteLine("Please Enter A Filter Expression:");
+
+
+                        string Filter = Console.ReadLine().Trim();
+                        bool containsAnd = Filter.Contains("&&"); // check if filter contains && symbol                    
+                        bool containsComma = Filter.Contains(","); // check if filter cointains so we know if user wants multiple filtering;
+                        bool containsOr = Filter.Contains("||"); // check if filter contains || symbol
+
+                        if (string.IsNullOrWhiteSpace(Filter))
+                        {
+                            Console.WriteLine("Filter cannot be empty. Please enter a valid filter.");
+                            continue; // Re-ask if the filter is empty
+                        }
+                        try
+                        {
+                            if (containsOr)
+                            {
+                                var orComponents = Regex.Split(Filter, @"\s*\|\|\s*"); // splitting components with ||
+                                var combinedList = new List<Players>();
+
+                                foreach (var orComponent in orComponents)
+                                {
+                                    string mainOrComponent = Regex.Replace(orComponent, @"\s+", " ").Trim();
+                                    var andComponents = Regex.Split(mainOrComponent, @"\s*\&\&\s*"); // splitting components with , or &&
+                                    var filteredPlayersForAnd = Players;
+                                    foreach (var andComponent in andComponents)
+                                    {
+                                        string mainAndComponent = Regex.Replace(andComponent, @"\s+", " ").Trim();
+                                        filteredPlayersForAnd = PerformFilter(filteredPlayersForAnd, mainAndComponent);
+                                    }
+                                    combinedList.AddRange(filteredPlayersForAnd);
+                                    filteredPlayersList = combinedList;
+                                }
+                                combinedList = combinedList.Distinct().ToList(); // Remove duplicates and display the combined list
+                                DisplayAllPlayersInTabularFormat(combinedList);
+                            }
+                            else if (containsComma || containsAnd)
+                            {
+
+                                var filterComponents = Regex.Split(Filter, @"[,\&]{1,2}"); // splitting components with , or &&
+                                var filteredPlayers = Players;
+                                foreach (var component in filterComponents)
+                                {
+                                    string mainComponent = Regex.Replace(component, @"\s+", " ").Trim(); // replacing unnecessary too much space btw three components with a space , removing all trailing and leading space.    
+                                    filteredPlayers = PerformFilter(filteredPlayers, mainComponent);
+                                    filteredPlayersList = filteredPlayers;
+                                }
+                                DisplayAllPlayersInTabularFormat(filteredPlayers);
+                            }
+                            else
+                            {
+                                Filter = Regex.Replace(Filter, @"\s+", " ").Trim(); // replacing unnecessary too much space btw three components with a space , removing all trailing and leading space.
+                                var filteredPlayers = PerformFilter(Players, Filter);
+                                filteredPlayersList = filteredPlayers;
+                                DisplayAllPlayersInTabularFormat(filteredPlayers);
+                            }
+
+                            isValidFilter = true;
+                        }
+                        catch (Exception)
+                        {
+                            Console.WriteLine($"Invalid filter format. Please try again and make sure evrything is spaced out good and written with the correct operator.");
+                        }
+                    }
+                    if (filteredPlayersList.Count() == 0)
+                    {
+
+                        Console.WriteLine("Sorry, there is nothing to show.....");
+                        Console.WriteLine();
+                    }
+                    else
+                    {
+                        Console.WriteLine("Do you want to sort? \n1.Yes \n2.No");
+                        string ans = Console.ReadLine().Trim();
+                        while (string.IsNullOrEmpty(ans) || (ans != "1" && ans != "2"))
+                        {
+                            Console.WriteLine();
+                            Console.WriteLine("Please Enter a Valid Option (1 or 2)");
+                            Console.WriteLine();
+                            ans = Console.ReadLine().Trim();
+                        }
+
+                        if (ans == "1")
+                        {
+                            Console.WriteLine("Enter the column to sort by , if multiple sorting enter columns to sort by, separated by commas (e.g., 'G, P, GP'):");
+
+                            bool validColumnsInput = false;
+                            List<string> sortColumns = new List<string>();
+
+                            // Loop to keep asking for input until it's valid
+                            while (!validColumnsInput)
+                            {
+                                string sortColumnsInput = Console.ReadLine().Trim();
+
+                                // Split the columns by commas and map them to internal names
+                                sortColumns = sortColumnsInput.Split(',').Select(col => col.Trim()).Select(GetInternalColumnName).ToList();
+
+                                // Check if all columns are valid
+                                if (sortColumns.All(col => IsValidColumn(col)))
+                                {
+                                    validColumnsInput = true;
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Invalid column name(s). Please enter valid column names (e.g., 'Name', 'Team', 'Pos', 'GP', 'G', 'A', '+/-', 'P/GP', 'S%', 'TOI/GP', 'Shifts/GP', 'FOW%').");
+                                }
+                            }
+
+                            Console.WriteLine("Enter the corresponding sort orders for each column, separated by commas (e.g., 'asc, desc'):");
+
+                            bool validOrdersInput = false;
+                            List<string> sortOrders = new List<string>();
+
+                            // Loop to keep asking for valid sort order input until it's correct
+                            while (!validOrdersInput)
+                            {
+                                string sortOrdersInput = Console.ReadLine().Trim();
+
+                                // Split the orders by commas and validate
+                                sortOrders = sortOrdersInput.Split(',').Select(order => order.Trim().ToLower()).ToList();
+
+                                if (sortOrders.Count == sortColumns.Count && sortOrders.All(order => order == "asc" || order == "desc"))
+                                {
+                                    validOrdersInput = true;
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Please enter valid sort orders ('asc' or 'desc') for each column.");
+                                }
+                            }
+
+                            var sortedPlayers = PerformSort(filteredPlayersList, sortColumns, sortOrders);
+                            DisplayAllPlayersInTabularFormat(sortedPlayers);
+                        }
+                        else if (ans == "2")
+                        {
+                            Console.WriteLine("Returning to menu...");
+                        }
+                    }
                 }
-                else if (sortOrder == "desc")
+                else if (option == "2") // If user wants to sort
                 {
-                    query = query.OrderByDescending(player => column.GetValue(player));
+                    Console.WriteLine("Enter the column to sort by , if multiple sorting enter columns to sort by, separated by commas (e.g., 'G, P, GP'):");
+
+                    bool validColumnsInput = false;
+                    List<string> sortColumns = new List<string>();
+
+                    // Loop to keep asking for input until it's valid
+                    while (!validColumnsInput)
+                    {
+                        string sortColumnsInput = Console.ReadLine().Trim();
+
+                        // Split the columns by commas and map them to internal names
+                        sortColumns = sortColumnsInput.Split(',').Select(col => col.Trim()).Select(GetInternalColumnName).ToList();
+
+                        // Check if all columns are valid
+                        if (sortColumns.All(col => IsValidColumn(col)))
+                        {
+                            validColumnsInput = true;
+                        }
+                        else
+                        {
+                            Console.WriteLine("Invalid column name(s). Please enter valid column names (e.g., 'Name', 'Team', 'Pos', 'GP', 'G', 'A', '+/-', 'P/GP', 'S%', 'TOI/GP', 'Shifts/GP', 'FOW%').");
+                        }
+                    }
+
+                    Console.WriteLine("Enter the corresponding sort orders for each column, separated by commas (e.g., 'asc, desc'):");
+
+                    bool validOrdersInput = false;
+                    List<string> sortOrders = new List<string>();
+
+                    while (!validOrdersInput) // Loop to keep asking for valid sort order input until it's correct
+                    {
+                        string sortOrdersInput = Console.ReadLine().Trim();
+
+                        // Split the orders by commas and validate
+                        sortOrders = sortOrdersInput.Split(',').Select(order => order.Trim().ToLower()).ToList();
+
+                        if (sortOrders.Count == sortColumns.Count && sortOrders.All(order => order == "asc" || order == "desc"))
+                        {
+                            validOrdersInput = true;
+                        }
+                        else
+                        {
+                            Console.WriteLine("Please enter valid sort orders ('asc' or 'desc') for each column.");
+                        }
+                    }
+
+                    var sortedPlayers = PerformSort(Players, sortColumns, sortOrders);
+                    DisplayAllPlayersInTabularFormat(sortedPlayers);
+                }
+                else if (option == "3")
+                {
+                    Console.WriteLine();
+                    DisplayAllPlayersInTabularFormat(Players);
+                }
+                else if (option == "4")
+                {
+                    Environment.Exit(0);
+                }
+                else
+                {
+                    Console.WriteLine("Invalid option, please try again.");
                 }
             }
-            return query.ToList();
         }
-        static readonly Dictionary<string, string> columnNameMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) //dictionary to help with columns stored with different name
-        {
-            { "+/-", "Plus_Minus" },
-            { "p/gp", "P_GP" },
-            { "s%", "Spercent" },
-            { "toi/gp", "TOI_GP" },
-            { "shifts/gp", "Shifts_GP" },
-            { "fow%", "FOWpercent" }
-        };
-
-        //REFERENCING//
-        //we used to AI help us integrate this method so that we can be able to map user input for column names 
-        static string GetInternalColumnName(string userInput)  // Helper method to map user input to internal column name
-        {
-            // Check if the input is mapped to an internal column name, else return the original input
-            if (columnNameMapping.ContainsKey(userInput))
-            {
-                return columnNameMapping[userInput];
-            }
-            return userInput; // return as is if no mapping exists
-        }
-
-        static bool IsValidColumn(string columnName) //bool to double check valid column name
-        {
-            var validColumns = new List<string>
-            {
-                "name", "team", "pos", "gp", "g", "a", "p", "plus_minus", "pim", "p_gp",
-                "ppg", "ppp", "shg", "shp", "gwg", "otg", "s", "spercent", "toi_gp", "shifts_gp", "fowpercent"
-            };
-
-            return validColumns.Contains(columnName.ToLower());
-        }
+    }
+}
 
 
