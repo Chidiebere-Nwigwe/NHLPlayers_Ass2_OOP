@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
@@ -459,6 +460,5 @@ namespace NHLPlayers_Ass2_OOP
                     //return players; // Return original list if the operator is invalid
             }
 
-            return filteredQuery.ToList(); // Return the filtered list
-        }
-
+            return filteredQuery.ToList(); // Return the filtered list
+        }
